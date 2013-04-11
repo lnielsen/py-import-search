@@ -25,7 +25,7 @@ def read(fname):
 
 setup(
     name='py-import-search',
-    version='0.2',
+    version='0.3',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     include_package_data=False,
@@ -39,7 +39,7 @@ setup(
     # PyPI metadata
     author="Lars Holm Nielsen",
     author_email="lars.holm.nielsen@cern.ch",
-    description=("A small utility for search your source files for specific imports"),
+    description=("A small utility for searching your source files for specific imports"),
     long_description=read('README.md'),
     license="GPL",
     url="https://github.com/lnielsen-cern/py-import-search",
