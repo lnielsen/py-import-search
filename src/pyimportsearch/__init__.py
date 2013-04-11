@@ -31,10 +31,11 @@ class ImportSearchVisitor(ast.NodeVisitor):
     Visitor that will do a pre-order traversal of the abstract syntax tree,
     detecting any import statements in the source code.
     """
-    def __init__(self, patterns):
+    def __init__(self, patterns, exclude_modules=[]):
         self.found = []
         self.found_set = {}
         self.patterns = patterns
+        self.exclude_modules = exclude_modules
 
     def add_found(self, s):
         self.found.append(s)
@@ -42,6 +43,15 @@ class ImportSearchVisitor(ast.NodeVisitor):
             self.found_set[s] += 1
         else:
             self.found_set[s] = 1
+
+    def excluded(self, from_or_import_str):
+        module_parts = from_or_import_str.split(".")
+
+        mstr = ""
+        for m in module_parts:
+            mstr += ".%s" % m if mstr else m
+            if mstr in self.exclude_modules:
+                return True
 
     def match_module(self, module_str):
         ms = module_str.split(".")
@@ -53,6 +63,10 @@ class ImportSearchVisitor(ast.NodeVisitor):
                     return True
 
     def match(self, from_str, import_strs):
+        # from part Excluded?
+        if from_str and self.excluded(from_str):
+            return
+        # Match from part
         from_matched = False
         if from_str and self.match_module(from_str):
             from_matched = True
@@ -61,6 +75,9 @@ class ImportSearchVisitor(ast.NodeVisitor):
             if from_matched:
                 self.add_found('from %s import %s' % (from_str, alias.name))
             else:
+                # only import (no from ) Excluded?
+                if self.excluded(alias.name):
+                    continue
                 if self.match_module(alias.name):
                     if from_str:
                         self.add_found('from %s import %s' % (from_str,
@@ -77,7 +94,7 @@ class ImportSearchVisitor(ast.NodeVisitor):
         super(ImportSearchVisitor, self).generic_visit(stmt)
 
 
-def search_dir(path, patterns, recursive=False):
+def search_dir(path, patterns, recursive=False, exclude_modules=[]):
     """
     Search imports matching one or more patterns
     in all Python source files.
@@ -95,7 +112,10 @@ def search_dir(path, patterns, recursive=False):
 
         # Detect and analyze python source files
         if os.path.isfile(filepath) and os.path.splitext(filepath)[1] == ".py":
-            visitor = ImportSearchVisitor(patterns)
+            visitor = ImportSearchVisitor(
+                patterns,
+                exclude_modules=exclude_modules
+            )
             try:
                 # Parse source file and search AST with visitor
                 visitor.visit(ast.parse(open(filepath).read()))
@@ -107,7 +127,10 @@ def search_dir(path, patterns, recursive=False):
 
     # Recursively search subfolders (paths only get added, if recursive==True)
     for s in subfolders:
-        search_dir(s, patterns, recursive=recursive)
+        search_dir(
+            s, patterns, recursive=recursive,
+            exclude_modules=exclude_modules
+        )
 
 
 def main():
@@ -115,19 +138,23 @@ def main():
     Search Python source files for imports
     """
     parser = argparse.ArgumentParser(
-        description='Search imports in Python source files'
+        description='Search Python source files for imports'
     )
     parser.add_argument(
         '-p --pattern', metavar='PATTERN', dest='patterns', type=str,
-        action='append', help='pattern for matching imports (multiple allowed)'
+        action='append', help='pattern for matching imports (multiple allowed).'
     )
     parser.add_argument(
         '-d --dir', metavar='DIR', dest='dir', type=str,
-        help='path of directory containing Python source files'
+        help='path of directory containing Python source files.'
     )
     parser.add_argument(
         '-r --recursive', dest='recursive', action='store_true',
         help=' read all source files under each directory, recursively.'
+    )
+    parser.add_argument(
+        '-e --exclude-module', metavar='MODULE', dest='exclude_modules',
+        type=str, action='append', help='exclude module (multiple allowed).'
     )
 
     # Parse arguments
@@ -149,7 +176,8 @@ def main():
             return re.compile(p)
         except Exception:
             raise Exception("Invalid pattern %s" % p)
-
+    if not args.exclude_modules:
+        args.exclude_modules = []
     if not args.patterns:
         args.patterns = []
     try:
@@ -159,7 +187,10 @@ def main():
         print parser.print_help()
         return 2
 
-    search_dir(args.dir, args.patterns, recursive=args.recursive)
+    search_dir(
+        args.dir, args.patterns, recursive=args.recursive,
+        exclude_modules=args.exclude_modules
+    )
 
 
 if __name__ == "__main__":

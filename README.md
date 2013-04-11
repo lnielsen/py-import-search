@@ -14,19 +14,19 @@ Usage
 -----
 
 ```
-$ py-import-search --help
 usage: py-import-search [-h] [-p --pattern PATTERN] [-d --dir DIR]
-                        [-r --recursive]
+                        [-r --recursive] [-e --exclude-module MODULE]
 
-Search imports in Python source files
+Search Python source files for imports
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p --pattern PATTERN  pattern for matching imports (multiple allowed)
-  -d --dir DIR          path of directory containing Python source files
+  -p --pattern PATTERN  pattern for matching imports (multiple allowed).
+  -d --dir DIR          path of directory containing Python source files.
   -r --recursive        read all source files under each directory,
                         recursively.
-
+  -e --exclude-module MODULE
+                        exclude module (multiple allowed).
 ```
 
 Examples
@@ -61,5 +61,18 @@ $ py-import-search -d . -p setup
 Print imports matching 'setup$':
 ```
 $ py-import-search -d . -p 'setup$'
+.../src/py-import-search/setup.py: from setuptools import setup
+```
+
+Print imports matching 'setup$':
+```
+$ py-import-search -d . -p 'setup$'
+.../src/py-import-search/setup.py: from setuptools import setup
+```
+
+Print all imports for source files in a directory excluding os module:
+```
+$ py-import-search -d . -e os
+.../src/py-import-search/setup.py: from setuptools import find_packages
 .../src/py-import-search/setup.py: from setuptools import setup
 ```
